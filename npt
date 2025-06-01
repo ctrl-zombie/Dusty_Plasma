@@ -1,0 +1,48 @@
+# LAMMPS Input Script for Dusty Plasma Simulation (metal units, atom_style full)
+# Microparticles with Yukawa interactions under NPT at 2000 K and 10 bar
+# Kappa value/ frequency / cutoff : In box size range only
+# NVT simulations
+# Have the temperature: 100K, i
+# Timestep: 0.001 in nano units
+units           metal
+atom_style      full
+dimension       3
+boundary        p p p
+# ------------------------------------------------
+# Define simulation box (length in Angstroms)
+# 10 mm × 3 mm × 3 mm: converted to Angstroms
+
+#neighbor 10000.0 bin
+#neigh_modify binsize 1000.0
+atom_modify sort 10000000 10000000
+
+read_data	atoms.data	
+# ------------------------------------------------
+# Define Yukawa potential parameters
+# Debye length: 100 µm = 1.0e6 Å
+# kappa = 1/λ_D
+variable kappa equal 1.0e-6
+# Amplitude: A = (3481^2)*14.3996
+variable A equal 3481*3481*14.3996
+# Cutoff distance: 5 × Debye length = 5e6 Å
+variable cutoff equal 5.0e6
+
+pair_style yukawa/gpu ${kappa} ${cutoff}
+pair_coeff * * ${A} ${kappa}
+
+# ------------------------------------------------
+# Timestep: 0.1 ms in SI = 1e-4 s, which is 1e8 ps in metal units
+timestep 1e8
+
+# ------------------------------------------------
+# Target temperature: 2000 K; Target pressure: 10 bar (converted)
+# 10 bar = 1e6 Pa; 1 eV/Å^3 = 1.60218e11 Pa, so target pressure = 6.242e-6 eV/Å^3.
+fix npt_all all npt temp 2000.0 2000.0 100.0 iso 6.242e-6 6.242e-6 1000.0
+
+# ------------------------------------------------
+# Output settings: Dump particle information every 100 timesteps
+dump 1 all custom 100 dump.out id type x y z vx vy vz
+
+# Run the simulation for a given number of timesteps
+run 10000
+
